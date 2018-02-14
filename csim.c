@@ -288,7 +288,7 @@ void free_allocated_memory(cache the_cache, long long num_sets, long long block_
 
 
 
-cache_statistics run_simulation(cache main_cache, cache_stats cache_statistics, memory_address address, queue LRU_queue){
+cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memory_address address){
 
 	//need some variables to hold some statistical information
 
@@ -351,7 +351,7 @@ cache_statistics run_simulation(cache main_cache, cache_stats cache_statistics, 
 
 	for (int i=0; i < num_lines; i++){
 		//grab the current line under consideration
-		cache_set_line current_line = selected_set.cache_set_line[i];
+		cache_set_line current_line = selected_set.cache_lines[i];
 		//if the current line is valid, then there is data in it and needs to be looked at
 		if(current_line.valid_bit){
 			//if the current line's tag and the incoming tag are identical, then the data was in the cache.
@@ -361,16 +361,16 @@ cache_statistics run_simulation(cache main_cache, cache_stats cache_statistics, 
 				//TO DO: maybe add the element to the LRU queue which would simulate the number of accesses
 				//LRU_queue.push(current_line)
 				//data was accessed, increment the number of accesses
-				current_line.time_stamp++
+				current_line.time_stamp++;
 				//since we modified the members of the line, we need to reflect that in the selected_set
-				selected_set.cache_set_lines = current_line;
+				selected_set.cache_lines[i] = current_line;
 			}
 
 		} 
 		//We looked at the line and the line was not valid, that means the data was not in the cache. This also means that
 		//the cache was not full, so change the cache_full flag to false
-		else if(!(current_line.valid) && (cache_full)){
-			cache_full = false;
+		else if(!(current_line.valid_bit) && (cache_is_full)){
+			cache_is_full = false;
 		}
 	}
 	//We have looked through all lines in the set. now we want to see if the number of hits was incremented by comparing the data
