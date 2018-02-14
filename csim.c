@@ -253,6 +253,78 @@ cache initialize_cache(long long num_sets, long long block_size, int associativi
 	return constructed_cache;
 }
 
+/* Function to find an empty line in a set
+*/
+
+int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
+
+	//first we need to know how many lines there are per set
+	int num_lines = cache_statistics.E;
+
+	//next, we need a temporary line variable to hold what the current line is
+	cache_set_line current_line;
+
+	for(int i=0; i < num_lines; i++){
+		//grab the current line in the set
+		current_line = selected_set.cache_lines[i];
+		//determine if the line is not valid (i.e. has no data in it). If yes, return the index of that line
+		if(current_line.valid_bit == false){
+			
+			//found an empty line, return the index of that line
+			return i;
+		}
+	}
+
+
+}
+
+//function to return the index of the least recently used element
+int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * time_stamp_container){
+
+	//need to know the number of lines we have to loop through
+	int num_lines = cache_statistics.E;
+
+	//initialize both of these variables to value of the time stamp found in the set's
+	//first line
+	int highest_time_stamp = selected_set.cache_lines[0].time_stamp; //will be used by run_simulation to set other lines' time stamps
+	int lowest_time_stamp = selected_set.cache_lines[0].time_stamp; //used to find current the lowest time stamp
+
+	//variable that will be returned after logic checks
+	int lowest_time_stamp_index;
+
+	//need a variable to hold the current line
+	cache_set_line current_line;
+
+	//loop through all of the lines, find the lowest_time_stamp_index
+	for(int i=0; i < num_lines; i++){
+		//if the lowest time stamp we have is greater than the time stamp at the current line, set the lowest time stamp
+		//to be this new lowest value
+		if(lowest_time_stamp > selected_set.cache_lines[i].time_stamp){
+			//grab the index of this element, it is the least recently used
+			lowest_time_stamp_index = i;
+			//set this so that further checks for lowest time stamp can be conducted as the loop progresses
+			lowest_time_stamp = selected_set.cache_lines[i].time_stamp;
+
+		}
+		//if the highest time stamp is less than another line's time stamp, update the highest time stamp
+		if(highest_time_stamp < selected_set.cache_lines[i].time_stamp ){
+
+			highest_time_stamp = selected_set.cache_lines[i].time_stamp;
+		}
+	}
+
+	//set the values for lowest time stamp and highest time stamp in the time_stamp_container
+
+	//first element in this container holds the lowest time stamp
+	time_stamp_container[0] = lowest_time_stamp;
+	//second element in thsi container holds the highest time stamp
+	time_stamp_container[1] = highest_time_stamp;
+
+	//found the index of the least recently used element, return the index
+	return lowest_time_stamp_index;
+
+}
+
 //Function that frees all allocated memory to a cache object
 
 void free_allocated_memory(cache the_cache, long long num_sets, long long block_size, int associativity){
@@ -451,77 +523,9 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 
 }
 
-/* Function to find an empty line in a set
-*/
-
-int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
-
-	//first we need to know how many lines there are per set
-	int num_lines = cache_statistics.E;
-
-	//next, we need a temporary line variable to hold what the current line is
-	cache_set_line current_line;
-
-	for(int i=0; i < num_lines; i++){
-		//grab the current line in the set
-		current_line = selected_set.cache_lines[i];
-		//determine if the line is not valid (i.e. has no data in it). If yes, return the index of that line
-		if(current_line.valid_bit == false){
-			
-			//found an empty line, return the index of that line
-			return i;
-		}
-	}
 
 
-}
 
-//function to return the index of the least recently used element
-int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * time_stamp_container){
-
-	//need to know the number of lines we have to loop through
-	int num_lines = cache_statistics.E;
-
-	//initialize both of these variables to value of the time stamp found in the set's
-	//first line
-	int highest_time_stamp = selected_set.cache_lines[0].time_stamp; //will be used by run_simulation to set other lines' time stamps
-	int lowest_time_stamp = selected_set.cache_lines[0].time_stamp; //used to find current the lowest time stamp
-
-	//variable that will be returned after logic checks
-	int lowest_time_stamp_index;
-
-	//need a variable to hold the current line
-	cache_set_line current_line;
-
-	//loop through all of the lines, find the lowest_time_stamp_index
-	for(int i=0; i < num_lines; i++){
-		//if the lowest time stamp we have is greater than the time stamp at the current line, set the lowest time stamp
-		//to be this new lowest value
-		if(lowest_time_stamp > selected_set.cache_lines[i].time_stamp){
-			//grab the index of this element, it is the least recently used
-			lowest_time_stamp_index = i;
-			//set this so that further checks for lowest time stamp can be conducted as the loop progresses
-			lowest_time_stamp = selected_set.cache_lines[i].time_stamp;
-
-		}
-		//if the highest time stamp is less than another line's time stamp, update the highest time stamp
-		if(highest_time_stamp < selected_set.cache_lines[i].time_stamp ){
-
-			highest_time_stamp = selected_set.cache_lines[i].time_stamp;
-		}
-	}
-
-	//set the values for lowest time stamp and highest time stamp in the time_stamp_container
-
-	//first element in this container holds the lowest time stamp
-	time_stamp_container[0] = lowest_time_stamp;
-	//second element in thsi container holds the highest time stamp
-	time_stamp_container[1] = highest_time_stamp;
-
-	//found the index of the least recently used element, return the index
-	return lowest_time_stamp_index;
-
-}
 
 
 
