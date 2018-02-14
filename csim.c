@@ -620,6 +620,8 @@ int main(int argc, char** argv)
 	long long num_sets = pow(2.0, cache_statistics.s);
 	//set a variable block_size to s^b to determine the block size
 	long long block_size = pow(2.0, cache_statistics.b);
+	//set a variable to hold the number of lines per cache set
+	int associativity = cache_statistics.E;
 
 	//initialize ppropriate parameters in the cache_statistics struct regarding hits, misses, and evictions
 
@@ -676,12 +678,15 @@ int main(int argc, char** argv)
 		}
 	}
 
-	//token comment for git
+	//print the results of our simulations
+    printSummary(cache_statistics.num_hits, cache_statistics.num_misses, cache_statistics.num_evictions);
+
+    //run the free_allocated_memory to give back all allocated memory
+    free_allocated_memory(main_cache, num_sets, block_size, associativity);
+
+    //close the file pointer
+    close(file_pointer);
 
 
-
-
-	//
-    printSummary(0, 0, 0);
     return 0;
 }
