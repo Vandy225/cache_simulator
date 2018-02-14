@@ -275,6 +275,9 @@ int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
 		}
 	}
 
+	//have to add this or the compiler gets grumpy
+	return 0;
+
 
 }
 
@@ -293,7 +296,10 @@ int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * t
 	int lowest_time_stamp_index;
 
 	//need a variable to hold the current line
-	cache_set_line current_line;
+	//
+	//TO DO: maybe change selected_set.cache_lines[i] to current_line to loop through lines
+	//
+	//cache_set_line current_line;
 
 	//loop through all of the lines, find the lowest_time_stamp_index
 	for(int i=0; i < num_lines; i++){
@@ -403,11 +409,11 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 
 	//First, we will left shift the passed in address by the size of the tag in order to strip off the tag bits.
 	//TO DO: data type may need to be unsigned long long
-	memory_address left_shifted_temp = address << (tag_size);
+	unsigned long long left_shifted_temp = address << (tag_size);
 	//Next, we will right shift the left_shifted_temp variable by (tag_size + number of block offset bits) in order
 	//to recover the set index
 	//TO DO: data type may need to be unsigned long long
-	memory_address set_index = left_shifted_temp >> (tag_size + cache_statistics.b);
+	unsigned long long set_index = left_shifted_temp >> (tag_size + cache_statistics.b);
 
 	//Next, in order to determine if our data is already in the cache, we need to know what the tag is for the
 	//incoming data. We can get the tag bits from the memory address by right shifting the memory address by (set bits + block offset bits):
@@ -425,7 +431,7 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 		//grab the current line under consideration
 		cache_set_line current_line = selected_set.cache_lines[i];
 		//if the current line is valid, then there is data in it and needs to be looked at
-		if(current_line.valid_bit){
+		if(current_line.valid_bit == true){
 			//if the current line's tag and the incoming tag are identical, then the data was in the cache.
 			if(current_line.tag == incoming_tag){
 				//increment the number of hits
@@ -440,8 +446,9 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 
 		} 
 		//We looked at the line and the line was not valid, that means the data was not in the cache. This also means that
-		//the cache was not full, so change the cache_full flag to false
+		//the cache was not full, so change the cache_is_full flag to false
 		else if(!(current_line.valid_bit) && (cache_is_full)){
+			//printf("current line valid bit = false, cache_is_full = true");
 			cache_is_full = false;
 		}
 	}
@@ -486,6 +493,7 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 		//we need to evict someone from the cache
 
 		//first we increment the eviction counter
+		printf("doing an eviction");
 		cache_statistics.num_evictions++;
 
 		//next we need to evict someone, so we set the tag in the cache at the LRU_index to be the tag of the
@@ -627,7 +635,7 @@ int main(int argc, char** argv)
 	//set a variable to hold the number of lines per cache set
 	int associativity = cache_statistics.E;
 
-	//initialize ppropriate parameters in the cache_statistics struct regarding hits, misses, and evictions
+	//initialize apropriate parameters in the cache_statistics struct regarding hits, misses, and evictions
 
 	cache_statistics.num_hits=0;
 	cache_statistics.num_misses=0;
@@ -676,8 +684,7 @@ int main(int argc, char** argv)
 				//Load operation interacts with the cache once, simulate once
 				case 'L':
 				cache_statistics = run_simulation(main_cache, cache_statistics, address);
-
-
+				break;
 			}
 		}
 	}
@@ -689,7 +696,7 @@ int main(int argc, char** argv)
     free_allocated_memory(main_cache, num_sets, block_size, associativity);
 
     //close the file pointer
-    close(file_pointer);
+    fclose(file_pointer);
 
 
     return 0;
