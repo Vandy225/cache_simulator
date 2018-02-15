@@ -24,7 +24,6 @@
 #include <strings.h>
 #include <sys/queue.h>
 
-int iteration=0;
 
 //struct and custom data type declarations
 
@@ -153,16 +152,13 @@ typedef struct  {
 
 
 
-/* Function to print how to use the program
-*	
-*
-*/
+//function to display usage options to the user
 void usage (char* argv[])
 {
     printf("Usage: %s [-hv] -s <num> -E <num> -b <num> -t <file>\n", argv[0]);
     printf("Options:\n");
     printf("  -h         Print this help message.\n");
-    //printf("  -v         Optional verbose flag.\n");
+    printf("  -v         Optional verbose flag.\n");
     printf("  -s <num>   Number of set index bits.\n");
     printf("  -E <num>   Number of lines per set.\n");
     printf("  -b <num>   Number of block offset bits.\n");
