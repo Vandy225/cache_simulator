@@ -4,6 +4,8 @@
 #
 CC = gcc
 CFLAGS = -g -Wall -Werror -std=c99 -m64
+#CFLAGS = -g -Wall -std=c99 -m64
+
 
 all: csim test-trans tracegen
 	# Generate a handin tar file each time you compile

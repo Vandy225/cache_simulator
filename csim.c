@@ -21,7 +21,10 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdbool.h>
+#include <strings.h>
 #include <sys/queue.h>
+
+int iteration=0;
 
 //struct and custom data type declarations
 
@@ -58,10 +61,10 @@ typedef unsigned long long int memory_address;
 *	Nothing. It is a constructor.
 */
 
-//TO DO --> consider using access_count to denote least-recently used member instead of queue if queue is a pain					
+					
 typedef struct {
 
-	bool valid_bit;
+	int valid_bit;
 	memory_address tag;
 	char* block;
 	int time_stamp;
@@ -171,15 +174,42 @@ void usage (char* argv[])
 }
 
 
+//Testing function to help debug the cache
+void print_cache(cache the_cache, cache_stats cache_statistics){
 
 
-//print the cache
-//TO DO --> implement cache printer
-void print_cache() {
+
+	long long num_sets = pow(2.0, cache_statistics.s);
+	int num_lines = cache_statistics.E;
+
+	printf("The number of sets is: %lli\n", num_sets);
+	printf("The number of lines in each set is: %i\n", num_lines);
+
+	//for each set
+	for (int i=0; i < num_sets; i++){
+		cache_set current_set = the_cache.sets[i];
+		printf("Set %i\n-----------------------------------------------------------\n", i);
+		//for each line
+		for(int j=0; j < num_lines; j++){
+			cache_set_line current_line = current_set.cache_lines[j];
+			printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+			printf("Line %i's members: Valid Bit=%i, Tag=%llu, Time Stamp=%i\n", j, current_line.valid_bit, current_line.tag, current_line.time_stamp);
+			printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+	
+		}
+		printf("-----------------------------------------------------------\n");
+	}
+
+
 
 }
 
+
+
+
+
 //function to check if a number is a power of 2
+//used when asking the user 
 bool is_power_of_two (int input){
 
 if((input &(input-1)) == 0 && input !=0 ){
@@ -190,8 +220,8 @@ if((input &(input-1)) == 0 && input !=0 ){
 
 }
 
-
-cache initialize_cache(long long num_sets, long long block_size, int associativity){
+//function to build the cache based on user-supplied parameters
+cache initialize_cache(long long num_sets, int associativity, long long block_size){
 	//make a new cache object that will be returned once parameters have been applied
 	cache constructed_cache;
 
@@ -205,7 +235,7 @@ cache initialize_cache(long long num_sets, long long block_size, int associativi
 	//cache_set pointer times the number of sets that we want to build
 
 
-	constructed_cache.sets = (cache_set*) malloc((sizeof(cache_set) * num_sets));
+	constructed_cache.sets = (cache_set*) malloc(sizeof(cache_set) * num_sets);
 
 	//Now that we have set the pointer in the cache object, we need to allocate lines to
 	//it.
@@ -242,7 +272,6 @@ cache initialize_cache(long long num_sets, long long block_size, int associativi
 			temp_cache_set.cache_lines[j] = temp_cache_set_line;
 
 
-
 		} 
 
 
@@ -253,33 +282,6 @@ cache initialize_cache(long long num_sets, long long block_size, int associativi
 	return constructed_cache;
 }
 
-/* Function to find an empty line in a set
-*/
-
-int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
-
-	//first we need to know how many lines there are per set
-	int num_lines = cache_statistics.E;
-
-	//next, we need a temporary line variable to hold what the current line is
-	cache_set_line current_line;
-
-	for(int i=0; i < num_lines; i++){
-		//grab the current line in the set
-		current_line = selected_set.cache_lines[i];
-		//determine if the line is not valid (i.e. has no data in it). If yes, return the index of that line
-		if(current_line.valid_bit == false){
-			
-			//found an empty line, return the index of that line
-			return i;
-		}
-	}
-
-	//have to add this or the compiler gets grumpy
-	return 0;
-
-
-}
 
 //function to return the index of the least recently used element
 int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * time_stamp_container){
@@ -293,29 +295,25 @@ int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * t
 	int lowest_time_stamp = selected_set.cache_lines[0].time_stamp; //used to find current the lowest time stamp
 
 	//variable that will be returned after logic checks
-	int lowest_time_stamp_index;
-
-	//need a variable to hold the current line
-	//
-	//TO DO: maybe change selected_set.cache_lines[i] to current_line to loop through lines
-	//
-	//cache_set_line current_line;
+	int lowest_time_stamp_index = 0;
 
 	//loop through all of the lines, find the lowest_time_stamp_index
-	for(int i=0; i < num_lines; i++){
+	for(int i=1; i < num_lines; i++){
+
+		cache_set_line current_line = selected_set.cache_lines[i];
 		//if the lowest time stamp we have is greater than the time stamp at the current line, set the lowest time stamp
 		//to be this new lowest value
-		if(lowest_time_stamp > selected_set.cache_lines[i].time_stamp){
+		if(lowest_time_stamp > current_line.time_stamp){
 			//grab the index of this element, it is the least recently used
 			lowest_time_stamp_index = i;
 			//set this so that further checks for lowest time stamp can be conducted as the loop progresses
-			lowest_time_stamp = selected_set.cache_lines[i].time_stamp;
+			lowest_time_stamp = current_line.time_stamp;
 
 		}
 		//if the highest time stamp is less than another line's time stamp, update the highest time stamp
-		if(highest_time_stamp < selected_set.cache_lines[i].time_stamp ){
+		if(highest_time_stamp < current_line.time_stamp ){
 
-			highest_time_stamp = selected_set.cache_lines[i].time_stamp;
+			highest_time_stamp = current_line.time_stamp;
 		}
 	}
 
@@ -331,10 +329,12 @@ int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * t
 
 }
 
-//Function that frees all allocated memory to a cache object
 
+//Function that frees all allocated memory to a cache object
 void free_allocated_memory(cache the_cache, long long num_sets, long long block_size, int associativity){
 	//for each cache set, free the lines in the cache set
+
+	
 
 	for (int i=0; i < num_sets; i++){
 		//grab the current set
@@ -342,13 +342,13 @@ void free_allocated_memory(cache the_cache, long long num_sets, long long block_
 		//check to make sure we are not going into memory we had not allocated
 		if (current_set.cache_lines != NULL){
 			//if the current_set.cache_set_line is not NULL, then we need to go to each of the lines and free up their blocks
-			for (int j=0; j < associativity; j++){
+			for (int j=0; j < block_size; j++){
 				//declare a temp to hold the current line
 				cache_set_line current_line = current_set.cache_lines[j];
 				//make sure the block pointer is not NULL
 				if (current_line.block != NULL){
 					//free the associated block memory
-					free (current_line.block);
+					free(current_line.block);
 				}
 
 			}		
@@ -364,14 +364,44 @@ void free_allocated_memory(cache the_cache, long long num_sets, long long block_
 
 }
 
+//function to find the index of an empty line
+int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
+
+	//first we need to know how many lines there are per set
+	int num_lines = cache_statistics.E;
+
+	//next, we need a temporary line variable to hold what the current line is
+	cache_set_line current_line;
+
+	int line_found = -1; //safguard in case this returns something weird
+	for(int i=0; i < num_lines; i++){
+		//grab the current line in the set
+		current_line = selected_set.cache_lines[i];
+		//determine if the line is not valid (i.e. has no data in it). If yes, return the index of that line
+		if(current_line.valid_bit == 0){
+			
+			//found an empty line, return the index of that line
+			line_found = i;
+			break;
+		}
+	}
+
+	//have to add this or the compiler gets grumpy
+	return line_found;
 
 
+}
+
+
+
+
+//function to simulate accesses to the cache. Causes changes in statistical data
 cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memory_address address){
 
 	//need some variables to hold some statistical information
 
 	//need a variable that tells us if the cache is full or not
-	bool cache_is_full = true;
+	int line_is_full = 1;
 
 	//need a variable to hold the number of lines that we are dealing with from the cache
 	int num_lines = cache_statistics.E;
@@ -383,6 +413,8 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 	//This is found by taking the size of a memory address (64 bits) and decreasing this value
 	//by the value of the number of set bits and by the value of the number of block bits
 	int tag_size = (64 - (cache_statistics.s + cache_statistics.b));
+
+	//printf("Tag Size: %i\n", tag_size);
 
 	//We need a way to find which set the new data is trying to fit into (i.e. the index of the set).
 	//To do this, we can do some clever bit shifting.
@@ -408,20 +440,17 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 	//Which leaves us with the set index
 
 	//First, we will left shift the passed in address by the size of the tag in order to strip off the tag bits.
-	//TO DO: data type may need to be unsigned long long
-	unsigned long long left_shifted_temp = address << (tag_size);
+	memory_address left_shifted_temp = address << (tag_size);
+
 	//Next, we will right shift the left_shifted_temp variable by (tag_size + number of block offset bits) in order
 	//to recover the set index
-	//TO DO: data type may need to be unsigned long long
-	unsigned long long set_index = left_shifted_temp >> (tag_size + cache_statistics.b);
+	memory_address set_index = left_shifted_temp >> (tag_size + cache_statistics.b);
 
 	//Next, in order to determine if our data is already in the cache, we need to know what the tag is for the
 	//incoming data. We can get the tag bits from the memory address by right shifting the memory address by (set bits + block offset bits):
-
 	memory_address incoming_tag = address >> (cache_statistics.s + cache_statistics.b);
 
 	//Now that we know which set we are trying to put data in, we need to hold it in a variable
-
 	cache_set selected_set = main_cache.sets[set_index];
 
 	//Now we have a set that we can try and put data in, and a tag associated with the incoming data. Now we need to loop through
@@ -431,27 +460,35 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 		//grab the current line under consideration
 		cache_set_line current_line = selected_set.cache_lines[i];
 		//if the current line is valid, then there is data in it and needs to be looked at
-		if(current_line.valid_bit == true){
+		if(current_line.valid_bit){
 			//if the current line's tag and the incoming tag are identical, then the data was in the cache.
 			if(current_line.tag == incoming_tag){
 				//increment the number of hits
 				cache_statistics.num_hits++;
-				//TO DO: maybe add the element to the LRU queue which would simulate the number of accesses
-				//LRU_queue.push(current_line)
+				
 				//data was accessed, increment the number of accesses
 				current_line.time_stamp++;
 				//since we modified the members of the line, we need to reflect that in the selected_set
 				selected_set.cache_lines[i] = current_line;
 			}
 
-		} 
-		//We looked at the line and the line was not valid, that means the data was not in the cache. This also means that
-		//the cache was not full, so change the cache_is_full flag to false
-		else if(!(current_line.valid_bit) && (cache_is_full)){
-			//printf("current line valid bit = false, cache_is_full = true");
-			cache_is_full = false;
 		}
+		//We looked at the line and the line was not valid (i.e. empty), that means the data was not in the cache. 
+		if(current_line.valid_bit != 1)
+		{
+			//This also means that the cache was not full, so change the cache_is_full flag to false
+			if (line_is_full){
+				//printf("Someone's valid bit was 0, cache is not full\n");
+				line_is_full = 0;
+
+			}
+			
+		}
+		
+		
+	
 	}
+
 	//We have looked through all lines in the set. now we want to see if the number of hits was incremented by comparing the data
 	//member of cache_statistics with our variable previous_hits. If it was, we had a cache hit and we should return the cache_statistics 
 	//object. If not, then we know it was a miss and we need to do some more processing.
@@ -489,11 +526,11 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 	//
 	//The cache was not full and we can store the line in cache
 
-	if (cache_is_full){
+	//Case 1: cache was full and we need to evict
+	if (line_is_full){
 		//we need to evict someone from the cache
 
 		//first we increment the eviction counter
-		printf("doing an eviction");
 		cache_statistics.num_evictions++;
 
 		//next we need to evict someone, so we set the tag in the cache at the LRU_index to be the tag of the
@@ -503,6 +540,8 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 		//now we modify the time stamp of the element in the line to reflect its access time, which is 
 		//the highest current time stamp + 1
 		selected_set.cache_lines[LRU_index].time_stamp = time_stamp_container[1] + 1;
+		//store the selected set in the cache at the set_index position
+		main_cache.sets[set_index] = selected_set;
 	}
 	//else there was room in the cache and we just need to find a line in the selected set to put it in
 	else {
@@ -510,17 +549,22 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 		//get the index of an empty line in the currently selected cache set
 		int empty_line_index = find_empty_line(selected_set, cache_statistics);
 
+		//printf("there was room in the cache");
+
 		//set the tag of the empty line with the tag of the incoming data
 		selected_set.cache_lines[empty_line_index].tag = incoming_tag;
 		//set the time stamp of the line to be that of the current maximum time stamp + 1 
 		selected_set.cache_lines[empty_line_index].time_stamp = time_stamp_container[1] + 1;
 		//set the valid bit on the line to 1 to indicate that there is data in the line
-		selected_set.cache_lines[empty_line_index].valid_bit = true;
+		selected_set.cache_lines[empty_line_index].valid_bit = 1;
+		//reflect change in the selected set back into the cache object
+		main_cache.sets[set_index] = selected_set;
 
 	}
+
+
 	//now we are done with the time_stamp_container object so we can free it
 	free(time_stamp_container);
-
 
 
 	//we have modified all of the members of the cache_statistics struct, return it to main
@@ -534,170 +578,137 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 
 
 
-
-
-
-
 //main program
 
-int main(int argc, char** argv)
+
+int main(int argc, char **argv)
 {
-	/*
-	//by default, set verbose mode to 0
-	int verbose_mode = 0;*/
-	
+    //declare cache object
+    cache this_cache;
+    //declare cache_stats object that will hold all relevant values for cache simulation
+    cache_stats cache_statistics;
+    
+    //declare variables for num sets and block size
 
-	//initialize an empty cache object
-	cache main_cache;
+    //num_sets = 2^s
+    long long num_sets;
+    //block_size = 2^b
+    long long block_size;
 
-	//initialize an empty cache_stats object
-	cache_stats cache_statistics;
+    //declare file pointer so we can access the trace files 
+    FILE* file_pointer;
 
-	//declare a file pointer in order to process the tracefile
+    //declare character to hold the type of cache interaction
+    char interaction_type;
+    //declare variable to hold the incoming memory address from the trace_file 
+    memory_address address;
+    //declare variable to hold the size of the interaction
+    int size;
+    //declare character pointer to point to the trace file
+    char* trace_file;
 
-	FILE* file_pointer;
+    char options;
+    while( (options=getopt(argc,argv,"s:E:b:t:v:h")) != -1){
+        switch(options){
+        case 's':
+            cache_statistics.s = atoi(optarg);
+            break;
+        case 'E':
+            cache_statistics.E = atoi(optarg);
+            break;
+        case 'b':
+            cache_statistics.b = atoi(optarg);
+            break;
+        case 't':
+            trace_file = optarg;
+            break;
+        case 'v':
+            //verbose_mode = 1;
+            break;
+        case 'h':
+            usage(argv);
+            exit(0);
+        default:
+            usage(argv);
+            exit(1);
+        }
+    }
+    //checks to make sure that the user has not entered invalid values for s, E, b, and the trace_file
+    if (cache_statistics.s == 0 || 
+    	cache_statistics.E == 0 || 
+    	cache_statistics.b == 0 || 
+    	trace_file == NULL || 
+    	cache_statistics.E > 8 || 
+    	!(is_power_of_two(cache_statistics.E))) {
+    	//display error message and exit with code 1
+        printf("%s: Missing required command line argument\n", argv[0]);
+        usage(argv);
+        exit(1);
+    }
 
-	//need a variable to store the value passed in the -t argument for the trace
+   	//set the values of previously declared variables
 
-	char* trace_file;
+   	//num_sets = 2^s
+    num_sets = pow(2.0, cache_statistics.s);
+    //block_size = 2^b
+    block_size = pow(2.0, cache_statistics.b);
+    //Zero out the counts of num_hits, num_misses, and num_evictions to start with
+    cache_statistics.num_hits = 0;
+    cache_statistics.num_misses = 0;
+    cache_statistics.num_evictions = 0;
 
-	//TO DO --> May need to make sure that the cache_statistics are set to 0
 
-	//next thing to do is parse arguments from the command line
+    //run cache initialization function that will build an empty cache according to user specifications
+    this_cache = initialize_cache(num_sets, cache_statistics.E, block_size);
 
-	//have a character that will hold the argument
-	char argument;
+    //set the file pointer to point to the open trace_file
+    file_pointer = fopen(trace_file,"r");
 
-	//run a while loop to process the arguments
-	//will check for invalid arguments later
-	while ((argument=getopt(argc, argv, "s:E:b:t:v:h")) != -1){
-		//switch statement to handle what to do with the argument
-		//need atoi to change the strings into integers to store in the cache_statistics struct.
-		switch (argument){
-			//get the number of set bits from the user, store in cache_statistics
-			case 's': 
-			cache_statistics.s = atoi(optarg);
-			break;
-			
-			//get the number of lines per set from the user
-			case 'E':
-			cache_statistics.E = atoi(optarg);
-			break;
-			
-			//get the number of bits in the byte offset from the user
-			case 'b':
-			cache_statistics.b = atoi(optarg);
-			break;
-			
-			//get the name of the tracefile
-			case 't':
-			trace_file = optarg;
-			break;
-			
-			//enable verbose mode
-			/*
-			case 'v':
-			verbose_mode = 1;
-			break;*/
-			
-			//print usage
-			case 'h':
-			usage(argv);
-			//exit normally
-			exit(0);
-			
-			//if bad arguments, then print usage and exit
-			default:
-			usage(argv);
-			//print code 1 to indicate bad exit
-			exit(1);
-		}
-	}
-	//Check to make sure that the parameter setting in cache_statistics
-	//conforms to the rules
-	if (cache_statistics.s == 0 || 
-		cache_statistics.E == 0 || 
-		cache_statistics.E > 8 ||
-		!(is_power_of_two(cache_statistics.E)) ||
-		cache_statistics.b == 0 ||
-		trace_file == NULL)
-	{
-		printf("Bad argument value\n\n");
-		usage(argv);
-	}
-	//use the parameters gathered from the user to get some useful variables
+    
+    //start reading in data from the file:
+   	if (file_pointer != NULL) {
+   		//as long as the values for interaction_type, address, and size keep coming in, keep reading them
+        while (fscanf(file_pointer, " %c %llx,%d", &interaction_type, &address, &size) == 3) {
+        	//differentiate simulation based on interaction_type
+            switch(interaction_type) {
+            	//Instruction load is to be ignored. No simulation here.
+                case 'I':
+                break;
+                //Load interacts with cache once, simulate once.
+                case 'L':
+                    cache_statistics = run_simulation(this_cache, cache_statistics, address);
+                break;
+                //Store interacts with cache once, simulate once.
+                case 'S':
+                    cache_statistics = run_simulation(this_cache, cache_statistics, address);
+                break;
+                //Modify interacts with cache twice:
+                //Once for the load.
+                //Once for the modify.
+                //Simulate twice.
+                case 'M':
+                    cache_statistics = run_simulation(this_cache, cache_statistics, address);
+                    cache_statistics = run_simulation(this_cache, cache_statistics, address);	
+                break;
+                //default condition for safety
+                default:
+                break;
+            }
+        }
+    }
 
-	//make sure that the variables are large enough to deal with large numbers
-	//set a variable num_sets to 2^s to determine the number of sets
-	long long num_sets = pow(2.0, cache_statistics.s);
-	//set a variable block_size to s^b to determine the block size
-	long long block_size = pow(2.0, cache_statistics.b);
-	//set a variable to hold the number of lines per cache set
-	int associativity = cache_statistics.E;
-
-	//initialize apropriate parameters in the cache_statistics struct regarding hits, misses, and evictions
-
-	cache_statistics.num_hits=0;
-	cache_statistics.num_misses=0;
-	cache_statistics.num_evictions=0;
-
-	//now that we have the building blocks for a cache, we need to initialize the main_cache object with these values
-	//pass in the number of sets, block size, and associativity when constructing the cache
-
-	main_cache = initialize_cache(num_sets, block_size, cache_statistics.E);
-
-	//TO DO: maybe declare queue here
-
-	//now that we have initialized the cache, we need to parse the input that is coming in from the trace files
-
-	//point the file pointer at the supplied trace file
-	file_pointer = fopen(trace_file, "r");
-
-	//declare variables that will hold the contents from fscanf
-	//character variable to hold the type of instruction (I, M, S, L)
-	char instruction;
-	//64 bit integer to hold the memory address
-	memory_address address;
-	//integer to hold the size of the operation being performed
-	int size;
-
-	//make sure that the file pointer is not NULL
-	if (file_pointer != NULL){
-		//use fscanf to retrieve input from the trace file, stop when you do not get 3 operands
-		while(fscanf(file_pointer, " %c %lli,%i",&instruction, &address, &size)==3){
-			//use switch statement to deal with the different cases of instruction.
-			//Now we are actually running the simulations on the cache
-			switch(instruction){
-				case 'I':
-				//Instruction load does not interact with the cache, just continue on
-				break;
-				//Modify instruction involves a load and a modify, need to simulate the cache
-				//twice
-				case 'M':
-				cache_statistics = run_simulation(main_cache, cache_statistics, address);
-				cache_statistics = run_simulation(main_cache, cache_statistics, address);
-				break;
-				//Store operation interacts with the cache once, simulate once
-				case 'S':
-				cache_statistics = run_simulation(main_cache, cache_statistics, address);
-				break;
-				//Load operation interacts with the cache once, simulate once
-				case 'L':
-				cache_statistics = run_simulation(main_cache, cache_statistics, address);
-				break;
-			}
-		}
-	}
-
-	//print the results of our simulations
+    //print the results of the simulation as per the assignment specifications
     printSummary(cache_statistics.num_hits, cache_statistics.num_misses, cache_statistics.num_evictions);
 
-    //run the free_allocated_memory to give back all allocated memory
-    free_allocated_memory(main_cache, num_sets, block_size, associativity);
-
-    //close the file pointer
+    //run function to free all heap memory allocated
+    free_allocated_memory(this_cache, num_sets, cache_statistics.E, block_size);
+    //close the file so as not to cause issues
     fclose(file_pointer);
-
 
     return 0;
 }
+
+
+
+
+
