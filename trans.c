@@ -1,4 +1,17 @@
-/* 
+/*
+ * Title: trans.c 
+ * Course: CPSC 4210
+ * Instructor: Shahadat Hossain
+ * Assessment: Cache Simulator and Matrix Transpose Project
+ * Name: Joshua Vandenhoek
+ * ID: 001142936
+ * Date: February 16, 2018
+ * Purpose: Implement efficient strategies for matrix transposition using blocking.
+ */
+
+
+
+/*
  * trans.c - Matrix transpose B = A^T
  *
  * Each transpose function must have a prototype of the form:

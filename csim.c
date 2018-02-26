@@ -2,7 +2,8 @@
 * Title: csim.c
 * Written By: Joshua Vandenhoek
 * Student ID#: 001142936
-* Written For: CPSC 4210
+* Course: CPSC 4210
+* Instructor: Shahadat Hossain
 * Date: February 9, 2018
 *
 * Purpose: csim.c is a program that is intended to report the total number of 
