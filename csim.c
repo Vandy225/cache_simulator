@@ -25,9 +25,6 @@
 #include <sys/queue.h>
 
 
-//struct and custom data type declarations
-
-
 //This custom data type is a 64 bit integer designed to hold
 //the (converted to binary) memory address that comes from the valgrind output
 typedef unsigned long long int memory_address;
@@ -152,9 +149,25 @@ typedef struct  {
 
 
 
-//function to display usage options to the user
+/* Function that prints out the usage options of the program to the user. Ends the program as this 
+*  only executes when the user inputs bad arguments or explicitly asks for help with the "-h" flag.
+*
+*	==========
+*	Arguments
+*	==========	
+*
+*	Char* argv[] --> character array representing the options passed in by the user
+*
+*	========
+*	Returns
+*	========
+*
+*	void, prints the usage options to standard out.
+*/
 void usage (char* argv[])
 {
+	//go through and print out any relevant information for command line arguments
+	//to use the program
     printf("Usage: %s [-hv] -s <num> -E <num> -b <num> -t <file>\n", argv[0]);
     printf("Options:\n");
     printf("  -h         Print this help message.\n");
@@ -166,57 +179,110 @@ void usage (char* argv[])
     printf("\nExamples:\n");
     printf("  %s -s 4 -E 1 -b 4 -t traces/yi.trace\n", argv[0]);
     printf("  %s -v -s 8 -E 2 -b 4 -t traces/yi.trace\n", argv[0]);
+    //end the program
     exit(0);
 }
 
 
-//Testing function to help debug the cache
+/*  Testing function to help debug the cache.  Useful for finding out which data entered which set/line based on tag.
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	cache the_cache --> the fully constructed cache object containing all lines, sets, and blocks
+*	
+*	cache_stats cache_statistics --> struct that contains all "accounting information" (e.g. number of sets, lines, block_size, etc).
+*
+*	=======
+*	Returns
+*	=======
+*
+*	void, simply prints out debugging information to the screen
+*/
 void print_cache(cache the_cache, cache_stats cache_statistics){
 
 
-
+	//get the number of sets, which is 2^s
 	long long num_sets = pow(2.0, cache_statistics.s);
+	//get the number of lines
 	int num_lines = cache_statistics.E;
 
+	//prirnt out the number of sets and number of lines
 	printf("The number of sets is: %lli\n", num_sets);
 	printf("The number of lines in each set is: %i\n", num_lines);
 
 	//for each set
 	for (int i=0; i < num_sets; i++){
+		//grab the current set
 		cache_set current_set = the_cache.sets[i];
+		//print a "header" to delineate the current set
 		printf("Set %i\n-----------------------------------------------------------\n", i);
 		//for each line
 		for(int j=0; j < num_lines; j++){
+			//grab the current line
 			cache_set_line current_line = current_set.cache_lines[j];
+			//print out a delineating block
 			printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
+			//print out the current line's valid bit, tag, and time stamp
 			printf("Line %i's members: Valid Bit=%i, Tag=%llu, Time Stamp=%i\n", j, current_line.valid_bit, current_line.tag, current_line.time_stamp);
+			//finishing delineating block
 			printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-	
 		}
+		//write a line to delineate the end of the set
 		printf("-----------------------------------------------------------\n");
 	}
-
-
 
 }
 
 
 
 
-
-//function to check if a number is a power of 2
-//used when asking the user 
+/* Function to check if a number is a power of 2
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	int input --> the number we want to know is a power of two or not
+*
+*	=======
+*	Returns
+*	=======
+*
+*	bool, indicating if the numner was a power of two or not
+*/
 bool is_power_of_two (int input){
-
+//fun bit comparison trick to see it a number is a power of two
 if((input &(input-1)) == 0 && input !=0 ){
+	//if the number was a power of two, return true
 	return true;
 } else {
+	//if not, return false
 	return false;
 }
 
 }
 
-//function to build the cache based on user-supplied parameters
+/* Function to build the cache based on user-supplied parameters. Uses S, E, and B to build an outer cache container with S sets, E lines per
+*  set, and B blocks in each line. 
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	long long num_sets --> long long integer that represents the number of sets that will be in the cache
+*
+*	int associativity --> integer indicating how many lines per set will be in the cache
+*
+*	long long block_size --> integer indicating how many blocks in each line there will be
+*
+*	=======
+*	Returns
+*	=======
+*
+*	fully constructed cache type object with all sets, lines and blocks
+*/
 cache initialize_cache(long long num_sets, int associativity, long long block_size){
 	//make a new cache object that will be returned once parameters have been applied
 	cache constructed_cache;
@@ -279,7 +345,23 @@ cache initialize_cache(long long num_sets, int associativity, long long block_si
 }
 
 
-//function to return the index of the least recently used element
+/* Function to return the index of the least recently used element in the cache. Goes through the current (i.e. only valid) set
+*  line by line and determines which element has the lowest time stamp. Once it finds this element, it returns the index of the line
+*  containing the least recently used element. This function is also responsible for updating the time stamps of other elements as they
+*  are accessed in order to maintain the current time stamp in order to set the time stamp for future accesses.
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	cache_set selected_set --> cache_set object representing the currently selected set that the least recently used element will be in
+*
+*	cache_stats cache_statistics --> cache_stats object for grabbing the number of lines per set in order to iterate through all lines
+*
+*	int* time_stamp_container --> integer array that holds 2 elements: holds the most recently used element (representing value of the most current
+*								  time stamp) and the least recently used element (representing the value of time stamp of the least recently used element)
+*								  . These values need to be maintained and updated as elements are accessed and evicted.
+*/
 int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * time_stamp_container){
 
 	//need to know the number of lines we have to loop through
@@ -326,12 +408,29 @@ int find_LRU_index(cache_set selected_set, cache_stats cache_statistics, int * t
 }
 
 
-//Function that frees all allocated memory to a cache object
+/* Function that frees all dynamically allocated memory to a cache object. Goes through all blocks per line, all the lines per set, and
+*  all sets in the cache object.
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	cache the_cache --> the complete cache object	
+*
+*	long long num_sets --> long long integer representing the number of sets in the cache
+*
+*	long long block_size --> long long integer representing the size of blocks in each line
+*
+*	int associativity --> integer representing the number of lines per set in the cache
+*
+*	=======
+*	Returns
+*	=======
+*
+*	void, the function simply releases all dynamically allocated memory in the cache object
+*/
 void free_allocated_memory(cache the_cache, long long num_sets, long long block_size, int associativity){
 	//for each cache set, free the lines in the cache set
-
-	
-
 	for (int i=0; i < num_sets; i++){
 		//grab the current set
 		cache_set current_set = the_cache.sets[i];
@@ -360,16 +459,33 @@ void free_allocated_memory(cache the_cache, long long num_sets, long long block_
 
 }
 
-//function to find the index of an empty line
+/* Function to find the index of an empty line. Checks the valid bit for each line in a selected set and checks if the 
+*  line is not valid. If it is not valid, the index of that line in the set is returned.
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	cache_set seleced_set --> the cache_set object that represents the current set we are trying to find an empty
+*							  line in.
+*
+*	cache_stats cache_statistics --> cache_stats object so that we can grab the number of lines per set from it in order
+*									 to iterate through all of the lines of the selected set
+*
+*	=======
+*	Returns
+*	=======
+*
+*	integer, representing the index of an empty line in the current set
+*/
 int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
 
 	//first we need to know how many lines there are per set
 	int num_lines = cache_statistics.E;
-
 	//next, we need a temporary line variable to hold what the current line is
 	cache_set_line current_line;
-
-	int line_found = -1; //safguard in case this returns something weird
+	 //safguard in case this returns something weird
+	int line_found = -1;
 	for(int i=0; i < num_lines; i++){
 		//grab the current line in the set
 		current_line = selected_set.cache_lines[i];
@@ -381,17 +497,41 @@ int find_empty_line(cache_set selected_set, cache_stats cache_statistics){
 			break;
 		}
 	}
-
 	//have to add this or the compiler gets grumpy
 	return line_found;
-
 
 }
 
 
 
 
-//function to simulate accesses to the cache. Causes changes in statistical data
+/* Function to simulate accesses to the cache. Causes changes in statistical data regarding hits, misses, and evictions. 
+*  Takes in a memory address corresponding to the incoming data, attempts to find that item in the cache. If so, it was a hit. Otherwise, it was
+*  a miss or an eviction. If it was a cold miss, the data item is stored in the cache.
+*  The function performs evictions based on least recently used element, and as such needs to keep track of and
+*  update time stamps for data elements in the cache as well. 
+*  Once the function has completed determining hits, misses, or evictions, it returns a cache_stats object that is used by main
+*  to report the total number of hits, misses, and evictions to standard out.
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	cache main_cache --> the complete cache object that data passes through and is evaluated on hits, misses, and evictions
+*
+*	cache_stats cache_statistics --> cache_stats object that is used to hold the relevant statistical information for reporting
+*									 hits, misses, and evictions. Also contains data members for S, s, E, b, and B.
+*
+*	memory_address address --> 64 bit memory address that represents an incoming data item into the cache. The data item is 
+*							   tried against the cache, where it is evaluated as a hit, miss, or it evicts another data item.
+*
+*	=======
+*	Returns
+*	=======
+*	
+*	cache_stats object, updated based on the number of hits, misses, and evictions that occurred during evaluation of
+*	an incoming data item. 
+*/
 cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memory_address address){
 
 	//need some variables to hold some statistical information
@@ -557,25 +697,16 @@ cache_stats run_simulation(cache main_cache, cache_stats cache_statistics, memor
 		main_cache.sets[set_index] = selected_set;
 
 	}
-
-
 	//now we are done with the time_stamp_container object so we can free it
 	free(time_stamp_container);
-
-
 	//we have modified all of the members of the cache_statistics struct, return it to main
 	return cache_statistics;
-
-
-
-
 }
 
 
 
 
-//main program
-
+/* Main program */
 
 int main(int argc, char **argv)
 {

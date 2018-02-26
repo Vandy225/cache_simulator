@@ -20,35 +20,32 @@ int is_transpose(int M, int N, int A[N][M], int B[M][N]);
  *     be graded. 
  */
 char transpose_submit_desc[] = "Transpose submission";
-//void transpose_submit(int M, int N, int A[N][M], int B[M][N])
-//{
-//}
 
-/* 
- * You can define additional transpose functions below. We've defined
- * a simple one below to help you get started. 
- */ 
 
-/* 
- * trans - A simple baseline transpose function, not optimized for the cache.
- */
-char trans_desc[] = "Simple row-wise scan transpose";
 
-/*
-void trans(int M, int N, int A[N][M], int B[M][N])
-{
-    int i, j, tmp;
-
-    for (i = 0; i < N; i++) {
-        for (j = 0; j < M; j++) {
-            tmp = A[i][j];
-            B[j][i] = tmp;
-        }
-    }    
-
-}*/
-
+/* Function that uses the chosen strategies to transpose elements in the matrices. The function choose the correct strategy
+*  based on the dimensions of the matrix passed in.
+*
+*	=========
+*	Arguments
+*	=========
+*
+*	int M --> the number of columns in the matrix
+*
+*	int N --> the number of rows in the matrix
+*
+*	int A[N][M] --> the source matrix, of dimensions N X M
+*
+*	int B[M][N] --> the destination matrix, where the transposed elements will reside
+*
+*	=======
+*	Returns
+*	=======
+*
+*	void, this is the function that is evaluated by the provided binaries
+*/
 void transpose_submit(int M, int N, int A[N][M], int B[M][N]){
+	//local variable declarations for operations on the matrices
 	int big_row_num; 
 	int big_col_num; 
 	int block_row;
@@ -81,7 +78,6 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N]){
 						temporary_element = A[block_row][block_col];
 						//grab the index of the diagonal element 
 						diagonal_index=block_col;
-
 					}
 				}
 				//this means we have a diagonal element, now we transpose it 
@@ -131,7 +127,8 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N]){
 	
 
 	}
-	//else we are working with the 61*67 matrix. Using block size 16 as it got the best results
+	//else we are working with the 61*67 matrix. Using block size 16 as it got the best results. Using the same
+	//strategy as with the 32x32 matrix
 	else {
 		//iterate through the the columns of the big matrix, skipping by block size each time
 	for (big_col_num =0; big_col_num < M; big_col_num += 16){
@@ -157,7 +154,6 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N]){
 						temporary_element = A[block_row][block_col];
 						//grab the index of the diagonal element 
 						diagonal_index=block_col;
-
 					}
 				}
 				//this means we have a diagonal element,
